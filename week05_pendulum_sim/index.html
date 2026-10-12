@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1a24">
+  <title>单摆模拟器 | Week 05</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1a1a24;
+      --panel: #22232e;
+      --panel-raised: #292a36;
+      --line: #3b3d49;
+      --muted: #9699a9;
+      --text: #ececf0;
+      --cyan: #56d7df;
+      --amber: #ffb45e;
+      --green: #8bddaa;
+      font-family: "Bahnschrift", "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image: radial-gradient(ellipse at 48% 0%, #30313c 0%, transparent 58%),
+        linear-gradient(135deg, transparent 0 49.8%, #ffffff05 50%, transparent 50.2%);
+      background-size: auto, 34px 34px;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(1120px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 38px 0 30px;
+      animation: appear 500ms ease-out both;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid #56d7df66;
+      border-radius: 50%;
+      color: var(--cyan);
+      font-size: 16px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--green);
+      font-family: "Consolas", monospace;
+      font-size: 11px;
+      letter-spacing: .8px;
+    }
+
+    .status::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+      content: "";
+    }
+
+    .heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--amber);
+      font-family: "Consolas", monospace;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .heading-note {
+      margin: 0 0 3px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #20212bbf;
+      box-shadow: 0 24px 70px #0003, 0 1px 0 #ffffff08 inset;
+    }
+
+    .visual-column { min-width: 0; }
+
+    .stage {
+      position: relative;
+      min-height: 420px;
+      background: radial-gradient(ellipse at 50% 42%, #292b37 0%, #1e1f29 72%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 420px;
+    }
+
+    .stage-label {
+      position: absolute;
+      top: 20px;
+      left: 22px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #b9bbc7;
+      font-family: "Consolas", monospace;
+      font-size: 10px;
+      letter-spacing: 1.1px;
+    }
+
+    .stage-label span {
+      padding: 5px 7px;
+      border: 1px solid #56d7df45;
+      border-radius: 3px;
+      color: var(--cyan);
+    }
+
+    .readouts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--line);
+      background: #1d1e27;
+    }
+
+    .readout {
+      min-width: 0;
+      padding: 16px 20px 17px;
+    }
+
+    .readout + .readout { border-left: 1px solid var(--line); }
+
+    .readout-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-family: "Consolas", monospace;
+      font-size: 10px;
+      letter-spacing: .8px;
+    }
+
+    .readout-value {
+      font-size: 20px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .readout-value small {
+      margin-left: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px 28px;
+      padding: 21px 24px 23px;
+      border-top: 1px solid var(--line);
+      background: #24252f;
+    }
+
+    .controls-header {
+      display: flex;
+      grid-column: 1 / -1;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .controls h2 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .controls-intro {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .control { min-width: 0; }
+
+    .control-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .control label { font-size: 13px; }
+
+    output {
+      color: var(--cyan);
+      font-family: "Consolas", monospace;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      display: block;
+      width: 100%;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--cyan);
+      cursor: pointer;
+    }
+
+    .range-limits {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      color: #777a89;
+      font-family: "Consolas", monospace;
+      font-size: 10px;
+    }
+
+    .actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 9px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 14px;
+      border: 1px solid #56d7df66;
+      border-radius: 4px;
+      color: #122326;
+      background: var(--cyan);
+      cursor: pointer;
+      transition: background 150ms ease, transform 150ms ease;
+    }
+
+    .button:hover { background: #7be7eb; }
+    .button:active { transform: translateY(1px); }
+
+    .button.secondary {
+      border-color: var(--line);
+      color: var(--text);
+      background: var(--panel-raised);
+      font-size: 13px;
+    }
+
+    .button.secondary:hover { border-color: #777a89; }
+
+    .button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 3px;
+    }
+
+    .footer-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      margin-top: 17px;
+      color: #818493;
+      font-family: "Consolas", monospace;
+      font-size: 10px;
+    }
+
+    .footer-note strong {
+      color: var(--amber);
+      font-weight: 500;
+    }
+
+    @keyframes appear {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 28px, 560px); padding-top: 22px; }
+      .heading { align-items: start; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+      h1 { font-size: 26px; }
+      .stage { min-height: 370px; border-right: 0; }
+      canvas { height: 370px; }
+      .controls { grid-template-columns: 1fr; gap: 21px; padding: 20px 18px; }
+      .controls-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+      .actions { width: 100%; }
+      .actions .button:first-child { flex: 1; }
+      .readout { padding: 13px 12px 14px; }
+      .readout-value { font-size: 17px; }
+    }
+
+    @media (max-width: 420px) {
+      .status { font-size: 9px; }
+      .brand { font-size: 10px; }
+      .stage { min-height: 340px; }
+      canvas { height: 340px; }
+      .readout { padding-inline: 9px; }
+      .readout-label { font-size: 9px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topline">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">∿</span> Dynamics Lab <span>/</span> 05</div>
+      <div class="status" id="status">SIMULATION RUNNING</div>
+    </div>
+
+    <header class="heading">
+      <div>
+        <p class="eyebrow">PHYSICS EXPERIMENT · 05</p>
+        <h1>单摆模拟器</h1>
+      </div>
+      <p class="heading-note">简谐振动 · 角位移实时观测</p>
+    </header>
+
+    <section class="workbench" aria-label="单摆物理模拟工作台">
+      <div class="visual-column">
+        <div class="stage">
+          <div class="stage-label"><span>LIVE</span> PENDULUM MOTION</div>
+          <canvas id="pendulum" aria-label="正在摆动的单摆物理模拟画面"></canvas>
+        </div>
+        <div class="readouts" aria-live="polite">
+          <div class="readout">
+            <span class="readout-label">角位移 / ANGLE</span>
+            <span class="readout-value"><span id="angleReadout">45.0</span><small>°</small></span>
+          </div>
+          <div class="readout">
+            <span class="readout-label">周期 / PERIOD</span>
+            <span class="readout-value"><span id="periodReadout">0.90</span><small>s</small></span>
+          </div>
+          <div class="readout">
+            <span class="readout-label">摆长 / LENGTH</span>
+            <span class="readout-value"><span id="lengthReadout">200</span><small>px</small></span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="controls" aria-labelledby="controlsTitle">
+        <div class="controls-header">
+          <div>
+            <h2 id="controlsTitle">实验参数</h2>
+            <p class="controls-intro">调整参数观察摆动变化</p>
+          </div>
+          <div class="actions">
+            <button class="button" id="toggle" type="button"><span id="toggleIcon" aria-hidden="true">Ⅱ</span><span id="toggleText">暂停</span></button>
+            <button class="button secondary" id="reset" type="button" aria-label="重置摆动至 45 度" title="重置">↺ <span>重置摆动</span></button>
+          </div>
+        </div>
+
+        <div class="control">
+          <div class="control-heading">
+            <label for="length">摆长 L</label>
+            <output id="lengthValue" for="length">200 px</output>
+          </div>
+          <input id="length" type="range" min="100" max="350" step="10" value="200">
+          <div class="range-limits"><span>100 px</span><span>350 px</span></div>
+        </div>
+
+        <div class="control">
+          <div class="control-heading">
+            <label for="gravity">重力加速度 g</label>
+            <output id="gravityValue" for="gravity">9.8 m/s²</output>
+          </div>
+          <input id="gravity" type="range" min="1" max="25" step="0.1" value="9.8">
+          <div class="range-limits"><span>1.0 m/s²</span><span>25.0 m/s²</span></div>
+        </div>
+
+        <div class="control">
+          <div class="control-heading">
+            <label for="damping">阻尼系数 c</label>
+            <output id="dampingValue" for="damping">0.004</output>
+          </div>
+          <input id="damping" type="range" min="0" max="0.010" step="0.001" value="0.004">
+          <div class="range-limits"><span>0.000</span><span>0.010</span></div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="footer-note"><span>MODEL <strong>θ″ = −(g / L) sin θ − 120cθ′</strong></span><span>FIXED STEP · 120 Hz</span></div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("pendulum");
+    const context = canvas.getContext("2d");
+    const lengthInput = document.getElementById("length");
+    const gravityInput = document.getElementById("gravity");
+    const dampingInput = document.getElementById("damping");
+    const toggleButton = document.getElementById("toggle");
+    const resetButton = document.getElementById("reset");
+    const fixedStep = 1 / 120;
+
+    let lengthPx = Number(lengthInput.value);
+    let gravity = Number(gravityInput.value);
+    let damping = Number(dampingInput.value);
+    const initialAngle = 45 * Math.PI / 180;
+    let angle = initialAngle;
+    let angularVelocity = 0;
+    let running = true;
+    let previousTime = 0;
+    let accumulator = 0;
+    let width = 0;
+    let height = 0;
+    let pixelRatio = 1;
+
+    function updateReadouts() {
+      document.getElementById("lengthValue").textContent = `${lengthPx} px`;
+      document.getElementById("gravityValue").textContent = `${gravity.toFixed(1)} m/s²`;
+      document.getElementById("dampingValue").textContent = damping.toFixed(3);
+      document.getElementById("lengthReadout").textContent = String(lengthPx);
+      document.getElementById("periodReadout").textContent = (2 * Math.PI * Math.sqrt((lengthPx / 1000) / gravity)).toFixed(2);
+      document.getElementById("angleReadout").textContent = (angle * 180 / Math.PI).toFixed(1);
+    }
+
+    function resizeCanvas() {
+      const bounds = canvas.getBoundingClientRect();
+      pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      width = bounds.width;
+      height = bounds.height;
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      draw();
+    }
+
+    function draw() {
+      context.clearRect(0, 0, width, height);
+      const origin = { x: width / 2, y: 68 };
+      const swingLimit = initialAngle;
+      const horizontalExtent = lengthPx * Math.sin(swingLimit);
+      const availableWidth = Math.max(0, width / 2 - 44);
+      const availableHeight = Math.max(0, height - origin.y - 44);
+      const visualScale = Math.min(1, availableWidth / Math.max(horizontalExtent, 1), availableHeight / lengthPx);
+      const visualLength = lengthPx * visualScale;
+      const bob = {
+        x: origin.x + visualLength * Math.sin(angle),
+        y: origin.y + visualLength * Math.cos(angle)
+      };
+
+      context.save();
+      context.strokeStyle = "#ffffff12";
+      context.lineWidth = 1;
+      context.setLineDash([3, 7]);
+      context.beginPath();
+      context.moveTo(origin.x, 35);
+      context.lineTo(origin.x, height - 22);
+      context.stroke();
+      context.setLineDash([2, 7]);
+      context.strokeStyle = "#56d7df55";
+      context.beginPath();
+      context.arc(origin.x, origin.y, visualLength, Math.PI / 2 - swingLimit, Math.PI / 2 + swingLimit);
+      context.stroke();
+      context.restore();
+
+      context.strokeStyle = "#a9acba";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(origin.x, origin.y);
+      context.lineTo(bob.x, bob.y);
+      context.stroke();
+
+      context.fillStyle = "#c5c8d2";
+      context.beginPath();
+      context.arc(origin.x, origin.y, 7, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = "#686b79";
+      context.beginPath();
+      context.arc(origin.x, origin.y, 2.5, 0, Math.PI * 2);
+      context.fill();
+
+      const glow = context.createRadialGradient(bob.x - 5, bob.y - 7, 2, bob.x, bob.y, 39);
+      glow.addColorStop(0, "#d9ffff");
+      glow.addColorStop(0.18, "#70edf0");
+      glow.addColorStop(0.42, "#35bdc8");
+      glow.addColorStop(1, "#35bdc800");
+      context.fillStyle = glow;
+      context.beginPath();
+      context.arc(bob.x, bob.y, 39, 0, Math.PI * 2);
+      context.fill();
+
+      const metal = context.createRadialGradient(bob.x - 6, bob.y - 8, 1, bob.x, bob.y, 16);
+      metal.addColorStop(0, "#f4ffff");
+      metal.addColorStop(0.28, "#8cebee");
+      metal.addColorStop(1, "#188b9a");
+      context.fillStyle = metal;
+      context.beginPath();
+      context.arc(bob.x, bob.y, 15, 0, Math.PI * 2);
+      context.fill();
+
+      context.textAlign = "center";
+      context.fillStyle = "#8f93a2";
+      context.font = "11px Consolas, monospace";
+      context.fillText(`${lengthPx} px`, (origin.x + bob.x) / 2 + 12, (origin.y + bob.y) / 2 - 8);
+    }
+
+    function advanceSimulation() {
+      const lengthMeters = lengthPx / 1000;
+      const acceleration = -(gravity / lengthMeters) * Math.sin(angle) - damping * 120 * angularVelocity;
+      angularVelocity += acceleration * fixedStep;
+      angle += angularVelocity * fixedStep;
+    }
+
+    function frame(timestamp) {
+      if (!previousTime) previousTime = timestamp;
+      const elapsed = Math.min((timestamp - previousTime) / 1000, 0.05);
+      previousTime = timestamp;
+
+      if (running) {
+        accumulator += elapsed;
+        while (accumulator >= fixedStep) {
+          advanceSimulation();
+          accumulator -= fixedStep;
+        }
+        document.getElementById("angleReadout").textContent = (angle * 180 / Math.PI).toFixed(1);
+      }
+
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    function resetSimulation() {
+      angle = initialAngle;
+      angularVelocity = 0;
+      accumulator = 0;
+      updateReadouts();
+      draw();
+    }
+
+    lengthInput.addEventListener("input", () => {
+      lengthPx = Number(lengthInput.value);
+      updateReadouts();
+      draw();
+    });
+
+    gravityInput.addEventListener("input", () => {
+      gravity = Number(gravityInput.value);
+      updateReadouts();
+    });
+
+    dampingInput.addEventListener("input", () => {
+      damping = Number(dampingInput.value);
+      updateReadouts();
+    });
+
+    toggleButton.addEventListener("click", () => {
+      running = !running;
+      toggleButton.setAttribute("aria-pressed", String(!running));
+      document.getElementById("toggleIcon").textContent = running ? "Ⅱ" : "▶";
+      document.getElementById("toggleText").textContent = running ? "暂停" : "继续";
+      document.getElementById("status").textContent = running ? "SIMULATION RUNNING" : "SIMULATION PAUSED";
+      document.getElementById("status").style.color = running ? "var(--green)" : "var(--amber)";
+    });
+
+    resetButton.addEventListener("click", resetSimulation);
+    window.addEventListener("resize", resizeCanvas);
+    updateReadouts();
+    resizeCanvas();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
